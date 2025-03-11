@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js"></script>
+</head>
+<body>
+    <script>
+        function setup() {
+            createCanvas(displayWidth, displayHeight);
+            background(0);
+            describe(
+                'Make a cube you can move around by moving your phone And then give the user the ability to look around And theeeen have the cube leave a trail of smoke particles'
+            );
+        }
+
+        function deviceMoved() {
+            let x = map(accelerationX, -10, 10, 0, width);
+            let y = map(accelerationY, -10, 10, 0, height);
+            let diameter = map(accelerationZ, -10, 10, 0, 100);
+
+            background(0, 64);
+            noStroke();
+            fill(255);
+            circle(x, y, diameter);
+        }
+
+        // function draw() {
+        //     background(windowWidth, windowHeight, 0);
+        //
+        //     // Call every frame to adjust camera based on mouse/touch
+        //     orbitControl();
+        //
+        //     // Rotate rings in a half circle to create a sphere of cubes
+        //     for (let zAngle = 0; zAngle < 180; zAngle += 30) {
+        //         // Rotate cubes in a full circle to create a ring of cubes
+        //         for (let xAngle = 0; xAngle < 360; xAngle += 30) {
+        //             push();
+        //
+        //             // Rotate from center of sphere
+        //             rotateZ(zAngle);
+        //             rotateX(xAngle);
+        //
+        //             // Then translate down 400 units
+        //             translate(0, 400, 0);
+        //             box();
+        //             pop();
+        //         }
+        //     }
+        // }
+    </script>
+</body>
+</html>
