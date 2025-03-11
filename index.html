@@ -3,18 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gyroscopic Fireball</title>
+    <title>Gyroscopic Asteroid Fireball</title>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js"></script>
 </head>
 <body>
     <script>
         let button;
         let permissionGranted = false;
-        let cx, cy; // Position of the circle
+        let cx, cy;                        // Position of the circle
         let velocityX = 0, velocityY = 0; // Simulated velocity
         let lastCx = 0, lastCy = 0;
 
-        let particles = []
+        let particles = [];
+        let stars = [];           // For starry background
+        let shockwaves = [];     // For edge collision effects
+        let maxParticles = 300; // Performance limit
 
         function requestAccess() {
             DeviceOrientationEvent.requestPermission()
@@ -30,14 +33,26 @@
         function touchMoved() {
             return false;
         }
+
         function setup() {
             createCanvas(windowWidth, windowHeight);
             background(0);
+            stroke(32, 8, 64);
             
             cx = width / 2;
             cy = height / 2;
             lastCx = cx;
             lastCy = cy;
+            
+            // Generate stars for background
+            for (let i = 0; i < 200; i++) {
+                stars.push({
+                    x: random(width),
+                    y: random(height),
+                    size: random(0.2, 1.5),
+                    twinkleRate: random(0.01, 0.05)
+                });
+            }
 
             if (typeof(DeviceOrientationEvent) !== 'undefined' && typeof(DeviceOrientationEvent.requestPermission) == 'function') {
                 DeviceOrientationEvent.requestPermission()
@@ -68,6 +83,9 @@
                 
                 this.size = random(15, 25);
                 this.lifespan = random(150, 255);
+                this.type = random(1) < 0.7 ? "circle" : "ember"; // Two particle types
+                this.rotation = random(360);
+                this.rotSpeed = random(-2, 2);
                 
                 // brighter color the faster speed of the ball
                 let brightness = constrain(map(Pspeed, 0, 50, 50, 255), 50, 255);
@@ -88,13 +106,25 @@
                 
                 this.lifespan -= random(3, 7);
                 this.size *= 0.97;
+                this.rotation += this.rotSpeed;
             }
             
             display() {
                 noStroke(); // strip the outline 
                 fill(this.color);
                 this.color.setAlpha(this.lifespan);
-                ellipse(this.x, this.y, this.size);
+                
+                if (this.type === "circle") {
+                    ellipse(this.x, this.y, this.size);
+                } else {
+                    // Ember style particles 
+                    push();
+                    translate(this.x, this.y);
+                    rotate(radians(this.rotation));
+                    let s = this.size * 0.6;
+                    triangle(0, -s, s/2, s/2, -s/2, s/2);
+                    pop();
+                }
             }
             
             isDead() {
@@ -103,7 +133,13 @@
         }
 
         function draw() {
-            background(0); // no fade effect
+            // Deep space gradient background
+            let from = color(25, 5, 60); // Deep purple/blue
+            let to = color(10, 0, 30);   // Near black
+            setGradient(0, 0, width, height, from, to, "Y");
+            
+            // 2. Draw starfield background
+            drawStars();
             
             // Handle device orientation if permission granted
             if (permissionGranted) {
@@ -118,6 +154,16 @@
             cx += velocityX;
             cy += velocityY;
             
+            // 3. Create shockwaves when hitting edges
+            if (cx <= 10 || cx >= width-10 || cy <= 10 || cy >= height-10) {
+                shockwaves.push({
+                    x: cx,
+                    y: cy,
+                    size: 1,
+                    alpha: 255
+                });
+            }
+            
             // Keep the circle within the canvas
             cx = constrain(cx, 0, width);
             cy = constrain(cy, 0, height);
@@ -127,14 +173,34 @@
             
             // Create new particles if the circle has moved
             if (dist(cx, cy, lastCx, lastCy) > 3) {
+                // Check for sharp direction change
+                let directionChange = abs(atan2(velocityY, velocityX) - atan2(lastCy - cy, lastCx - cx));
+                
+                // If sharp direction change, create burst
+                if (directionChange > PI/3 && Cspeed > 25) {
+                    createBurst(cx, cy, Cspeed);
+                }
+                
                 // Create more particles when moving faster
                 let particleCount = map(Cspeed, 0, 50, 1, 8);
                 for (let i = 0; i < particleCount; i++) {
                     particles.push(new Particle(cx, cy, velocityX, velocityY, Cspeed));
                 }
+                
+                // Add to score based on distance moved
+                score += dist(lastCx, lastCy, cx, cy) * 0.1;
+                
                 lastCx = cx;
                 lastCy = cy;
             }
+            
+            // Limit particles for performance
+            while (particles.length > maxParticles) {
+                particles.shift(); // Remove oldest particles
+            }
+            
+            // Update and display shockwaves
+            drawShockwaves();
             
             // Update and display particles
             for (let i = particles.length - 1; i >= 0; i--) {
@@ -159,6 +225,68 @@
                 let glowSize = map(Cspeed, 10, 50, 10, 25);
                 fill(255, 255, 200, 200);
                 ellipse(cx, cy, glowSize);
+            }
+            
+        }
+
+        // Gradient background function, i didnt make this 
+        function setGradient(x, y, w, h, c1, c2, axis) {
+            noFill();
+            if (axis === "Y") {
+                for (let i = y; i <= y + h; i++) {
+                    let inter = map(i, y, y + h, 0, 1);
+                    let c = lerpColor(c1, c2, inter);
+                    stroke(c);
+                    line(x, i, x + w, i);
+                }
+            } else {
+                for (let i = x; i <= x + w; i++) {
+                    let inter = map(i, x, x + w, 0, 1);
+                    let c = lerpColor(c1, c2, inter);
+                    stroke(c);
+                    line(i, y, i, y + h);
+                }
+            }
+        }
+
+        // Function to draw stars 
+        function drawStars() {
+            for (let i = 0; i < stars.length; i++) {
+                let star = stars[i];
+                let brightness = 150 + 105 * sin(frameCount * star.twinkleRate);
+                fill(brightness);
+                noStroke();
+                ellipse(star.x, star.y, star.size);
+            }
+        }
+
+        // Functions for particle bursts and shockwaves
+        function createBurst(x, y, speed) {
+            let burstCount = floor(map(speed, 25, 100, 10, 20));
+            for (let i = 0; i < burstCount; i++) {
+                let angle = random(TWO_PI);
+                let velocity = random(5, 15);
+                let vx = cos(angle) * velocity;
+                let vy = sin(angle) * velocity;
+                particles.push(new Particle(x, y, vx, vy, speed));
+            }
+        }
+
+        function drawShockwaves() {
+            for (let i = shockwaves.length - 1; i >= 0; i--) {
+                let wave = shockwaves[i];
+                noFill();
+                strokeWeight(3);
+                stroke(255, 200, 100, wave.alpha);
+                ellipse(wave.x, wave.y, wave.size);
+                
+                // Expand and fade
+                wave.size += 10;
+                wave.alpha -= 10;
+                
+                if (wave.alpha <= 0) {
+                    shockwaves.splice(i, 1);
+                }
             }
         }
     </script>
