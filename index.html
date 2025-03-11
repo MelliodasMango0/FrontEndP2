@@ -10,13 +10,14 @@
     <script>
         let button;
         let permissionGranted = false;
-        let cx, cy;                        // Position of the circle
+        let cx, cy; // Position of the circle
         let velocityX = 0, velocityY = 0; // Simulated velocity
         let lastCx = 0, lastCy = 0;
 
         let particles = [];
-        let stars = [];           // For starry background
-        let shockwaves = [];     // For edge collision effects
+        let stars = []; // For starry background
+        let shockwaves = []; // For edge collision effects
+        let score = 0; // For scoring system
         let maxParticles = 300; // Performance limit
 
         function requestAccess() {
@@ -117,7 +118,7 @@
                 if (this.type === "circle") {
                     ellipse(this.x, this.y, this.size);
                 } else {
-                    // Ember style particles 
+                    // Ember style particles (small triangular shapes)
                     push();
                     translate(this.x, this.y);
                     rotate(radians(this.rotation));
@@ -154,7 +155,7 @@
             cx += velocityX;
             cy += velocityY;
             
-            // 3. Create shockwaves when hitting edges
+            // Create shockwaves when hitting edges
             if (cx <= 10 || cx >= width-10 || cy <= 10 || cy >= height-10) {
                 shockwaves.push({
                     x: cx,
@@ -226,12 +227,12 @@
                 fill(255, 255, 200, 200);
                 ellipse(cx, cy, glowSize);
             }
-
-            fill(255);
             
+            //fill(255);
+        
         }
 
-        // Gradient background function, i didnt make this 
+        // Gradient background function
         function setGradient(x, y, w, h, c1, c2, axis) {
             noFill();
             if (axis === "Y") {
@@ -251,7 +252,7 @@
             }
         }
 
-        // Function to draw stars 
+        // Function to draw stars
         function drawStars() {
             for (let i = 0; i < stars.length; i++) {
                 let star = stars[i];
