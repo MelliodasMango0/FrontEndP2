@@ -57,7 +57,7 @@
         }
 
         class Particle {
-            constructor(x, y, velocityX, velocityY, speed) {
+            constructor(x, y, velocityX, velocityY, Pspeed) {
                 this.x = x;
                 this.y = y;
                 
@@ -66,13 +66,13 @@
                 this.vx = -velocityX * random(0.3, 0.8) + random(-2, 2);
                 this.vy = -velocityY * random(0.3, 0.8) + random(-2, 2);
                 
-                this.size = random(3, 10);
+                this.size = random(15, 25);
                 this.lifespan = random(150, 255);
                 
                 // brighter color the faster speed of the ball
-                let brightness = constrain(map(speed, 0, 50, 50, 255), 50, 255);
-                let redValue = constrain(map(speed, 0, 50, 200, 255), 200, 255);
-                let yellowValue = constrain(map(speed, 0, 50, 100, 200), 100, 200);
+                let brightness = constrain(map(Pspeed, 0, 50, 50, 255), 50, 255);
+                let redValue = constrain(map(Pspeed, 0, 50, 200, 255), 200, 255);
+                let yellowValue = constrain(map(Pspeed, 0, 50, 100, 200), 100, 200);
                 
                 this.color = color(redValue, yellowValue, random(0, 50), this.lifespan);
             }
@@ -103,14 +103,14 @@
         }
 
         function draw() {
-            background(0, 25); // Add slight transparency to create fade effect
+            background(0); // no fade effect
             
             // Handle device orientation if permission granted
             if (permissionGranted) {
                 if (rotationX !== undefined) {
                     // Adjust velocity based on rotation
-                    velocityX = map(constrain(rotationY, -45, 45), -45, 45, -15, 15) * 80;
-                    velocityY = map(constrain(rotationX, -45, 45), -45, 45, -15, 15) * 80;
+                    velocityX = map(constrain(rotationY, -45, 45), -45, 45, -15, 15) * 100;
+                    velocityY = map(constrain(rotationX, -45, 45), -45, 45, -15, 15) * 100;
                 }
             }
             
@@ -123,14 +123,14 @@
             cy = constrain(cy, 0, height);
             
             // Calculate speed for color intensity
-            let speed = dist(0, 0, velocityX, velocityY);
+            let Cspeed = dist(0, 0, velocityX, velocityY);
             
             // Create new particles if the circle has moved
             if (dist(cx, cy, lastCx, lastCy) > 3) {
                 // Create more particles when moving faster
-                let particleCount = map(speed, 0, 50, 1, 8);
+                let particleCount = map(Cspeed, 0, 50, 1, 8);
                 for (let i = 0; i < particleCount; i++) {
-                    particles.push(new Particle(cx, cy, velocityX, velocityY, speed));
+                    particles.push(new Particle(cx, cy, velocityX, velocityY, Cspeed));
                 }
                 lastCx = cx;
                 lastCy = cy;
@@ -146,17 +146,17 @@
             }
             
             // Draw the main circle with color based on speed
-            let brightness = constrain(map(speed, 0, 50, 150, 255), 150, 255);
-            let redValue = constrain(map(speed, 0, 50, 200, 255), 200, 255);
-            let yellowValue = constrain(map(speed, 0, 50, 100, 230), 100, 230);
+            let brightness = constrain(map(Cspeed, 0, 50, 150, 255), 150, 255);
+            let redValue = constrain(map(Cspeed, 0, 50, 200, 255), 200, 255);
+            let yellowValue = constrain(map(Cspeed, 0, 50, 100, 230), 100, 230);
             
             fill(redValue, yellowValue, 0);
             noStroke();
             ellipse(cx, cy, 30);
             
             // Add a glowing core at higher speeds
-            if (speed > 10) {
-                let glowSize = map(speed, 10, 50, 10, 25);
+            if (Cspeed > 10) {
+                let glowSize = map(Cspeed, 10, 50, 10, 25);
                 fill(255, 255, 200, 200);
                 ellipse(cx, cy, glowSize);
             }
