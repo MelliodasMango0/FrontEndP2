@@ -17,7 +17,18 @@
         let lastCx = 0, lastCy = 0;
 
         let particles = [];
-        let stars = []; // For starry background
+
+				// For starry background
+        let stars = []; 
+				let zAngles = [];
+				let xAngles = [];
+				let sphereSize = 4000;
+				let numRings = 6;
+				let numStars = 600;
+				let numStarsPerRing = numStars / numRings;
+				let zAngleIncrement = 180 / numRings;
+				let xAngleIncrement = 360 / numStarsPerRing;
+
         let shockwaves = []; // For edge collision effects
         let score = 0; // For scoring system
         let maxParticles = 300; // Performance limit
@@ -48,15 +59,29 @@
             lastCy = cy;
             
             // Generate stars for background
-            for (let i = 0; i < 200; i++) {
+            for (let i = 0; i < numStars; i++) {
                 stars.push({
-                    x: random(width*10),
-                    y: random(height*10),
-										z: random(-100, 100),
                     size: random(2, 10),
                     twinkleRate: random(0.01, 0.05)
                 });
             }
+
+						// Generate star positions for sphere
+						let zAngle = 0;
+						for (let ring = 0; ring < numRings; ring++) {
+								let zAngleAddMax = min(zAngleIncrement, 180 - zAngle);
+								let zAngleAdd = random(zAngleAddMax * 0.9, zAngleAddMax);
+								zAngle += zAngleIncrement;
+								zAngles.push(zAngle);
+
+								let xAngle = 0;
+								for (let starNum = 0; starNum < numStarsPerRing; starNum++) {
+										let xAngleAddMax = min(xAngleIncrement, 360 - xAngle);
+										let xAngleAdd = random(xAngleAddMax * 0.9, xAngleAddMax);
+										xAngle += xAngleIncrement;
+										xAngles.push(xAngle);
+								}
+						}
 
             if (typeof(DeviceOrientationEvent) !== 'undefined' && typeof(DeviceOrientationEvent.requestPermission) == 'function') {
                 DeviceOrientationEvent.requestPermission()
@@ -83,7 +108,7 @@
             //setGradient(0, 0, width, height, from, to, "Y");
             
             // 2. Draw starfield background
-            // drawStars();
+            drawStars();
 
 						// Enable orbit control with mouse and touch
 						orbitControl();
@@ -206,17 +231,33 @@
 
         // Function to draw stars
         function drawStars() {
-            for (let i = 0; i < stars.length; i++) {
-								push();
-                let star = stars[i];
-                let brightness = 150 + 105 * sin(frameCount * star.twinkleRate);
-                fill(brightness);
-                noStroke();
-                //ellipse(star.x, star.y, star.size);
-								translate(star.x, star.y, star.z);
-								sphere(star.size);
-								pop();
-            }
+						let numRings = 6;
+						let zAngleIncrement = 180 / numRings;
+						let numStarsPerRing = floor(stars.length / numRings);
+						let xAngleIncrement = 360 / numStarsPerRing;
+						// Rotate rings in a half circle to create a sphere of spheres
+						for (let ring = 0; ring < numRings; ring++) {
+								let zAngle = zAngles[ring];
+								// Rotate spheres in a full circle to create a ring
+								for (let starNum = 0; starNum < numStarsPerRing; starNum++) {
+										let xAngle = xAngles[ring * numStarsPerRing + starNum];
+										let star = stars[ring * numStarsPerRing + starNum];
+										let brightness = 150 + 105 * sin(frameCount * star.twinkleRate);	
+										
+										push();
+                		fill(brightness);
+                		noStroke();
+
+										// Rotate from center of sphere
+										rotateZ(radians(zAngle));
+										rotateX(radians(xAngle));
+
+										// Then translate down 400 units
+										translate(0, sphereSize, 0);
+										sphere(star.size);
+										pop();
+								}
+						}
         }
 
         // Functions for particle bursts and shockwaves
