@@ -33,6 +33,15 @@
         let score = 0; // For scoring system
         let maxParticles = 300; // Performance limit
 
+				// For border
+				let borderSize = 4000;
+				let xMax = borderSize/2;
+				let xMin = -borderSize/2;
+				let yMax = borderSize/2;
+				let yMin = -borderSize/2;
+				let zMax = borderSize/2;
+				let zMin = -borderSize/2;
+
         function requestAccess() {
             DeviceOrientationEvent.requestPermission()
             .then(response => {
@@ -114,13 +123,13 @@
 						orbitControl();
             
             // Handle device orientation if permission granted
-            // if (permissionGranted) {
-            //     if (rotationX !== undefined) {
-            //         // Adjust velocity based on rotation
-            //         velocityX = map(constrain(rotationY, -45, 45), -45, 45, -15, 15) * 100;
-            //         velocityY = map(constrain(rotationX, -45, 45), -45, 45, -15, 15) * 100;
-            //     }
-            // }
+            if (permissionGranted) {
+                if (rotationX !== undefined) {
+                    // Adjust velocity based on rotation
+                    velocityX = map(constrain(rotationY, -45, 45), -45, 45, -15, 15) * 100;
+                    velocityY = map(constrain(rotationX, -45, 45), -45, 45, -15, 15) * 100;
+                }
+            }
             
             // Update circle position based on velocity
             cx += velocityX;
@@ -137,57 +146,66 @@
             // }
             
             // Keep the circle within the canvas
-            cx = constrain(cx, 0, width);
-            cy = constrain(cy, 0, height);
+            cx = constrain(cx, xMin, xMax);
+            cy = constrain(cy, yMin, yMax);
             
             // Calculate speed for color intensity
             let Cspeed = dist(0, 0, velocityX, velocityY);
             
             // Create new particles if the circle has moved
-            // if (dist(cx, cy, lastCx, lastCy) > 3) {
-            //     // Check for sharp direction change
-            //     let directionChange = abs(atan2(velocityY, velocityX) - atan2(lastCy - cy, lastCx - cx));
+            if (dist(cx, cy, lastCx, lastCy) > 3) {
+                // Check for sharp direction change
+                let directionChange = abs(atan2(velocityY, velocityX) - atan2(lastCy - cy, lastCx - cx));
                 
-            //     // If sharp direction change, create burst
-            //     if (directionChange > PI/3 && Cspeed > 25) {
-            //         createBurst(cx, cy, Cspeed);
-            //     }
+                // If sharp direction change, create burst
+                if (directionChange > PI/3 && Cspeed > 25) {
+                    createBurst(cx, cy, Cspeed);
+                }
                 
-            //     // Create more particles when moving faster
-            //     let particleCount = map(Cspeed, 0, 50, 1, 8);
-            //     for (let i = 0; i < particleCount; i++) {
-            //         particles.push(new Particle(cx, cy, velocityX, velocityY, Cspeed));
-            //     }
+                // Create more particles when moving faster
+                let particleCount = map(Cspeed, 0, 50, 1, 8);
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle(cx, cy, velocityX, velocityY, Cspeed));
+                }
                 
-            //     // Add to score based on distance moved
-            //     score += dist(lastCx, lastCy, cx, cy) * 0.1;
+                // Add to score based on distance moved
+                score += dist(lastCx, lastCy, cx, cy) * 0.1;
                 
-            //     lastCx = cx;
-            //     lastCy = cy;
-            // }
+                lastCx = cx;
+                lastCy = cy;
+            }
             
             // Limit particles for performance
-            // while (particles.length > maxParticles) {
-            //     particles.shift(); // Remove oldest particles
-            // }
+            while (particles.length > maxParticles) {
+                particles.shift(); // Remove oldest particles
+            }
             
             // Update and display shockwaves
-            // drawShockwaves();
+            drawShockwaves();
             
             // Update and display particles
-            // for (let i = particles.length - 1; i >= 0; i--) {
-            //     particles[i].update();
-            //     particles[i].display();
-            //     if (particles[i].isDead()) {
-            //         particles.splice(i, 1);
-            //     }
-            // }
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].display();
+                if (particles[i].isDead()) {
+                    particles.splice(i, 1);
+                }
+            }
             
             // Draw the main circle with color based on speed
             let brightness = constrain(map(Cspeed, 0, 50, 150, 255), 150, 255);
             let redValue = constrain(map(Cspeed, 0, 50, 200, 255), 200, 255);
             let yellowValue = constrain(map(Cspeed, 0, 50, 100, 230), 100, 230);
             
+						// Draw the border
+						push();
+						noFill();
+						stroke('red');
+						strokeWeight(10);
+						box(borderSize);
+						pop();
+
+						// Draw the asteroid
 						push();
             fill(255);
             stroke(0);
@@ -197,17 +215,7 @@
 						normalMaterial();
 						scale(asteroidSize, asteroidSize, asteroidSize);
 						model(asteroid);
-						pop();
-            
-            // Add a glowing core at higher speeds
-            // if (Cspeed > 10) {
-            //     let glowSize = map(Cspeed, 10, 50, 10, 25);
-            //     fill(255, 255, 200, 200);
-            //     ellipse(cx, cy, glowSize);
-            // }
-            
-            //fill(255);
-        
+						pop();    
         }
 
         // Gradient background function
@@ -335,7 +343,12 @@
                 this.color.setAlpha(this.lifespan);
                 
                 if (this.type === "circle") {
-                    ellipse(this.x, this.y, this.size);
+									push();
+									translate(this.x, this.y);
+									rotate(radians(this.rotation));
+									sphere(this.size);
+									pop();
+                  // ellipse(this.x, this.y, this.size);
                 } else {
                     // Ember style particles (small triangular shapes)
                     push();
