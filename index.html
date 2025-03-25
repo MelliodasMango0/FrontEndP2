@@ -11,7 +11,7 @@
         let button;
         let permissionGranted = false;
 				let asteroid;
-				let asteroidTexture;
+				let asteroidSize = 10; // asteriod scale multiplier
         let cx, cy; // Position of the circle
         let velocityX = 0, velocityY = 0; // Simulated velocity
         let lastCx = 0, lastCy = 0;
@@ -195,6 +195,7 @@
             //ellipse(cx, cy, 30);
 						// translate(cx, cy, 0);
 						normalMaterial();
+						scale(asteroidSize, asteroidSize, asteroidSize);
 						model(asteroid);
 						pop();
             
