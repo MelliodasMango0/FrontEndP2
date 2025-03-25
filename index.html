@@ -10,15 +10,37 @@
     <script>
         let button;
         let permissionGranted = false;
+				let asteroid;
+				let asteroidSize = 10; // asteriod scale multiplier
         let cx, cy; // Position of the circle
         let velocityX = 0, velocityY = 0; // Simulated velocity
         let lastCx = 0, lastCy = 0;
 
         let particles = [];
-        let stars = []; // For starry background
+
+				// For starry background
+        let stars = []; 
+				let zAngles = [];
+				let xAngles = [];
+				let sphereSize = 4000;
+				let numRings = 6;
+				let numStars = 600;
+				let numStarsPerRing = numStars / numRings;
+				let zAngleIncrement = 180 / numRings;
+				let xAngleIncrement = 360 / numStarsPerRing;
+
         let shockwaves = []; // For edge collision effects
         let score = 0; // For scoring system
         let maxParticles = 300; // Performance limit
+
+				// For border
+				let borderSize = 4000;
+				let xMax = borderSize/2;
+				let xMin = -borderSize/2;
+				let yMax = borderSize/2;
+				let yMin = -borderSize/2;
+				let zMax = borderSize/2;
+				let zMin = -borderSize/2;
 
         function requestAccess() {
             DeviceOrientationEvent.requestPermission()
@@ -31,12 +53,12 @@
             .catch(console.error);
         }
 
-        function touchMoved() {
-            return false;
-        }
+				function preload() {
+					asteroid = loadModel('Asteroid.stl');
+				}
 
         function setup() {
-            createCanvas(windowWidth, windowHeight);
+            createCanvas(windowWidth, windowHeight, WEBGL);
             background(0);
             stroke(32, 8, 64);
             
@@ -46,14 +68,29 @@
             lastCy = cy;
             
             // Generate stars for background
-            for (let i = 0; i < 200; i++) {
+            for (let i = 0; i < numStars; i++) {
                 stars.push({
-                    x: random(width),
-                    y: random(height),
-                    size: random(0.2, 1.5),
+                    size: random(2, 10),
                     twinkleRate: random(0.01, 0.05)
                 });
             }
+
+						// Generate star positions for sphere
+						let zAngle = 0;
+						for (let ring = 0; ring < numRings; ring++) {
+								let zAngleAddMax = min(zAngleIncrement, 180 - zAngle);
+								let zAngleAdd = random(zAngleAddMax * 0.9, zAngleAddMax);
+								zAngle += zAngleIncrement;
+								zAngles.push(zAngle);
+
+								let xAngle = 0;
+								for (let starNum = 0; starNum < numStarsPerRing; starNum++) {
+										let xAngleAddMax = min(xAngleIncrement, 360 - xAngle);
+										let xAngleAdd = random(xAngleAddMax * 0.9, xAngleAddMax);
+										xAngle += xAngleIncrement;
+										xAngles.push(xAngle);
+								}
+						}
 
             if (typeof(DeviceOrientationEvent) !== 'undefined' && typeof(DeviceOrientationEvent.requestPermission) == 'function') {
                 DeviceOrientationEvent.requestPermission()
@@ -72,75 +109,18 @@
             }
         }
 
-        class Particle {
-            constructor(x, y, velocityX, velocityY, Pspeed) {
-                this.x = x;
-                this.y = y;
-                
-                // Make particles shoot in the opposite direction of movement
-                let randomAngle = random(-0.5, 0.5); // Add some randomness
-                this.vx = -velocityX * random(0.3, 0.8) + random(-2, 2);
-                this.vy = -velocityY * random(0.3, 0.8) + random(-2, 2);
-                
-                this.size = random(15, 25);
-                this.lifespan = random(150, 255);
-                this.type = random(1) < 0.7 ? "circle" : "ember"; // Two particle types
-                this.rotation = random(360);
-                this.rotSpeed = random(-2, 2);
-                
-                // brighter color the faster speed of the ball
-                let brightness = constrain(map(Pspeed, 0, 50, 50, 255), 50, 255);
-                let redValue = constrain(map(Pspeed, 0, 50, 200, 255), 200, 255);
-                let yellowValue = constrain(map(Pspeed, 0, 50, 100, 200), 100, 200);
-                
-                this.color = color(redValue, yellowValue, random(0, 50), this.lifespan);
-            }
-            
-            update() {
-                // Move the particle
-                this.x += this.vx;
-                this.y += this.vy;
-                
-                // Slow down
-                this.vx *= 0.55;
-                this.vy *= 0.55;
-                
-                this.lifespan -= random(3, 7);
-                this.size *= 0.97;
-                this.rotation += this.rotSpeed;
-            }
-            
-            display() {
-                noStroke(); // strip the outline 
-                fill(this.color);
-                this.color.setAlpha(this.lifespan);
-                
-                if (this.type === "circle") {
-                    ellipse(this.x, this.y, this.size);
-                } else {
-                    // Ember style particles (small triangular shapes)
-                    push();
-                    translate(this.x, this.y);
-                    rotate(radians(this.rotation));
-                    let s = this.size * 0.6;
-                    triangle(0, -s, s/2, s/2, -s/2, s/2);
-                    pop();
-                }
-            }
-            
-            isDead() {
-                return this.lifespan <= 0;
-            }
-        }
-
         function draw() {
             // Deep space gradient background
             let from = color(25, 5, 60); // Deep purple/blue
             let to = color(10, 0, 30);   // Near black
-            setGradient(0, 0, width, height, from, to, "Y");
+						background(to);
+            //setGradient(0, 0, width, height, from, to, "Y");
             
             // 2. Draw starfield background
             drawStars();
+
+						// Enable orbit control with mouse and touch
+						orbitControl();
             
             // Handle device orientation if permission granted
             if (permissionGranted) {
@@ -156,18 +136,18 @@
             cy += velocityY;
             
             // Create shockwaves when hitting edges
-            if (cx <= 10 || cx >= width-10 || cy <= 10 || cy >= height-10) {
-                shockwaves.push({
-                    x: cx,
-                    y: cy,
-                    size: 1,
-                    alpha: 255
-                });
-            }
+            // if (cx <= 10 || cx >= width-10 || cy <= 10 || cy >= height-10) {
+            //     shockwaves.push({
+            //         x: cx,
+            //         y: cy,
+            //         size: 1,
+            //         alpha: 255
+            //     });
+            // }
             
             // Keep the circle within the canvas
-            cx = constrain(cx, 0, width);
-            cy = constrain(cy, 0, height);
+            cx = constrain(cx, xMin, xMax);
+            cy = constrain(cy, yMin, yMax);
             
             // Calculate speed for color intensity
             let Cspeed = dist(0, 0, velocityX, velocityY);
@@ -217,19 +197,25 @@
             let redValue = constrain(map(Cspeed, 0, 50, 200, 255), 200, 255);
             let yellowValue = constrain(map(Cspeed, 0, 50, 100, 230), 100, 230);
             
-            fill(redValue, yellowValue, 0);
-            noStroke();
-            ellipse(cx, cy, 30);
-            
-            // Add a glowing core at higher speeds
-            if (Cspeed > 10) {
-                let glowSize = map(Cspeed, 10, 50, 10, 25);
-                fill(255, 255, 200, 200);
-                ellipse(cx, cy, glowSize);
-            }
-            
-            //fill(255);
-        
+						// Draw the border
+						push();
+						noFill();
+						stroke('red');
+						strokeWeight(10);
+						box(borderSize);
+						pop();
+
+						// Draw the asteroid
+						push();
+            fill(255);
+            stroke(0);
+						strokeWeight(10);
+            //ellipse(cx, cy, 30);
+						// translate(cx, cy, 0);
+						normalMaterial();
+						scale(asteroidSize, asteroidSize, asteroidSize);
+						model(asteroid);
+						pop();    
         }
 
         // Gradient background function
@@ -254,13 +240,33 @@
 
         // Function to draw stars
         function drawStars() {
-            for (let i = 0; i < stars.length; i++) {
-                let star = stars[i];
-                let brightness = 150 + 105 * sin(frameCount * star.twinkleRate);
-                fill(brightness);
-                noStroke();
-                ellipse(star.x, star.y, star.size);
-            }
+						let numRings = 6;
+						let zAngleIncrement = 180 / numRings;
+						let numStarsPerRing = floor(stars.length / numRings);
+						let xAngleIncrement = 360 / numStarsPerRing;
+						// Rotate rings in a half circle to create a sphere of spheres
+						for (let ring = 0; ring < numRings; ring++) {
+								let zAngle = zAngles[ring];
+								// Rotate spheres in a full circle to create a ring
+								for (let starNum = 0; starNum < numStarsPerRing; starNum++) {
+										let xAngle = xAngles[ring * numStarsPerRing + starNum];
+										let star = stars[ring * numStarsPerRing + starNum];
+										let brightness = 150 + 105 * sin(frameCount * star.twinkleRate);	
+										
+										push();
+                		fill(brightness);
+                		noStroke();
+
+										// Rotate from center of sphere
+										rotateZ(radians(zAngle));
+										rotateX(radians(xAngle));
+
+										// Then translate down 400 units
+										translate(0, sphereSize, 0);
+										sphere(star.size);
+										pop();
+								}
+						}
         }
 
         // Functions for particle bursts and shockwaves
@@ -290,6 +296,72 @@
                 if (wave.alpha <= 0) {
                     shockwaves.splice(i, 1);
                 }
+            }
+        }
+
+				class Particle {
+            constructor(x, y, velocityX, velocityY, Pspeed) {
+                this.x = x;
+                this.y = y;
+                
+                // Make particles shoot in the opposite direction of movement
+                let randomAngle = random(-0.5, 0.5); // Add some randomness
+                this.vx = -velocityX * random(0.3, 0.8) + random(-2, 2);
+                this.vy = -velocityY * random(0.3, 0.8) + random(-2, 2);
+                
+                this.size = random(15, 25);
+                this.lifespan = random(150, 255);
+                this.type = random(1) < 0.7 ? "circle" : "ember"; // Two particle types
+                this.rotation = random(360);
+                this.rotSpeed = random(-2, 2);
+                
+                // brighter color the faster speed of the ball
+                let brightness = constrain(map(Pspeed, 0, 50, 50, 255), 50, 255);
+                let redValue = constrain(map(Pspeed, 0, 50, 200, 255), 200, 255);
+                let yellowValue = constrain(map(Pspeed, 0, 50, 100, 200), 100, 200);
+                
+                this.color = color(redValue, yellowValue, random(0, 50), this.lifespan);
+            }
+            
+            update() {
+                // Move the particle
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Slow down
+                this.vx *= 0.55;
+                this.vy *= 0.55;
+                
+                this.lifespan -= random(3, 7);
+                this.size *= 0.97;
+                this.rotation += this.rotSpeed;
+            }
+            
+            display() {
+                noStroke(); // strip the outline 
+                fill(this.color);
+                this.color.setAlpha(this.lifespan);
+                
+                if (this.type === "circle") {
+									push();
+									translate(this.x, this.y);
+									rotate(radians(this.rotation));
+									sphere(this.size);
+									pop();
+                  // ellipse(this.x, this.y, this.size);
+                } else {
+                    // Ember style particles (small triangular shapes)
+                    push();
+                    translate(this.x, this.y);
+                    rotate(radians(this.rotation));
+                    let s = this.size * 0.6;
+                    triangle(0, -s, s/2, s/2, -s/2, s/2);
+                    pop();
+                }
+            }
+            
+            isDead() {
+                return this.lifespan <= 0;
             }
         }
     </script>
