@@ -34,19 +34,13 @@
         let maxParticles = 300; // Performance limit
 
 				// For border
-				let borderSize = 4000;
-				let xMax = borderSize/2;
-				let xMin = -borderSize/2;
-				let yMax = borderSize/2;
-				let yMin = -borderSize/2;
-				let zMax = borderSize/2;
-				let zMin = -borderSize/2;
+				let borderSize;
+				let xYZMax, xYZMin;
 
 				// Camera variables
 				let cam; // camera for orbit control
-				let camDistance = borderSize-500; // distance from the center
+				let camDistance; // distance from the center
 				let cubeCams = [];
-				let yAxis = [0, 1, 0]; // y-axis for rotation
 				let currentCamIndex = 0;
 				let targetCamIndex = 0;
 				let transitionStartTime = 0;
@@ -76,6 +70,11 @@
             background(0);
             stroke(32, 8, 64);
 
+						borderSize = windowWidth*2;
+						xYZMax = borderSize/2;
+						xYZMin = -borderSize/2;
+
+						camDistance = borderSize * 0.875; // Distance from the center
 						cam = createCamera();
 						cam.setPosition(0, 0, camDistance);
 						cam.lookAt(0, 0, 0);
@@ -183,8 +182,8 @@
             // }
             
             // Keep the circle within the canvas
-            cx = constrain(cx, xMin, xMax);
-            cy = constrain(cy, yMin, yMax);
+            cx = constrain(cx, xYZMin, xYZMax);
+            cy = constrain(cy, xYZMin, xYZMax);
             
             // Calculate speed for color intensity
             let Cspeed = dist(0, 0, velocityX, velocityY);
@@ -240,18 +239,7 @@
 						// Draw the asteroid
 						push();
  
-						// Get camera's orientation
-						let camX = cam.eyeX - cam.centerX;
-						let camY = cam.eyeY - cam.centerY;
-						let camZ = cam.eyeZ - cam.centerZ;
-
-						// This calculates the rotation needed to face the camera
-						let rotationAxis = createVector(camY, -camX, 0).normalize();
-						let rotationAngle = atan2(sqrt(camX*camX + camY*camY), camZ);
-						if (!isNaN(rotationAngle) && rotationAxis.mag() > 0) {
-							rotate(rotationAngle, [rotationAxis.x, rotationAxis.y, rotationAxis.z]);
-						}
-
+						rotateY(radians(90*currentCamIndex));
 						translate(cx, cy, 0);
 
 						normalMaterial();
@@ -345,7 +333,6 @@
 				function touchStarted() {
 						touchStartX = touches[0].x;
 						touchStartY = touches[0].y;
-						return false; // Prevent default
 				}
 
 				function touchEnded() {
@@ -365,13 +352,11 @@
 										startCameraTransition();
 								}
 						}
-						return false; // Prevent default
 				}
 
 				function mousePressed() {
 						touchStartX = mouseX;
 						touchStartY = mouseY;
-						return false; // Prevent default
 				}
 
 				function mouseReleased() {
@@ -388,7 +373,6 @@
 								}
 								startCameraTransition();
 						}
-						return false; // Prevent default
 				}
 
 				function startCameraTransition() {
@@ -457,6 +441,7 @@
                 
                 if (this.type === "circle") {
 									push();
+									rotateY(radians(90*currentCamIndex));
 									translate(this.x, this.y);
 									rotate(radians(this.rotation));
 									sphere(this.size);
@@ -465,6 +450,7 @@
                 } else {
                     // Ember style particles (small triangular shapes)
                     push();
+										rotateY(radians(90*currentCamIndex));
                     translate(this.x, this.y);
                     rotate(radians(this.rotation));
                     let s = this.size * 0.6;
