@@ -42,6 +42,19 @@
 				let zMax = borderSize/2;
 				let zMin = -borderSize/2;
 
+				// Camera variables
+				let cam; // camera for orbit control
+				let camDistance = borderSize-500; // distance from the center
+				let cubeCams = [];
+				let yAxis = [0, 1, 0]; // y-axis for rotation
+				let currentCamIndex = 0;
+				let targetCamIndex = 0;
+				let transitionStartTime = 0;
+				let transitionDuration = 500; // 0.5 seconds in milliseconds
+				let isTransitioning = false;
+				let touchStartX = 0;
+				let touchStartY = 0;
+
         function requestAccess() {
             DeviceOrientationEvent.requestPermission()
             .then(response => {
@@ -58,12 +71,37 @@
 				}
 
         function setup() {
-            createCanvas(windowWidth, windowHeight, WEBGL);
+            // Add touch and mouse event listeners for swipe detection
+						createCanvas(windowWidth, windowHeight, WEBGL);
             background(0);
             stroke(32, 8, 64);
+
+						cam = createCamera();
+						cam.setPosition(0, 0, camDistance);
+						cam.lookAt(0, 0, 0);
+						
+
+						for (let i = 0; i < 4; i++) {
+							let cubeCam = createCamera();
+							cubeCams.push(cubeCam);
+						}
+
+						// Set up cube cameras
+						cubeCams[0].setPosition(0, 0, camDistance); // front
+						cubeCams[1].setPosition(camDistance, 0, 0); // right
+						cubeCams[2].setPosition(0, 0, -camDistance); // back
+						cubeCams[3].setPosition(-camDistance, 0, 0); // left
+
+						for (let i = 0; i < cubeCams.length; i++) {
+							cubeCams[i].lookAt(0, 0, 0);
+						}
+
+						// Set initial camera
+    				currentCamIndex = 0; // Start with the camera you were using
+						setCamera(cam);
             
-            cx = width / 2;
-            cy = height / 2;
+            cx = 0;
+            cy = 0;
             lastCx = cx;
             lastCy = cy;
             
@@ -119,8 +157,7 @@
             // 2. Draw starfield background
             drawStars();
 
-						// Enable orbit control with mouse and touch
-						orbitControl();
+						updateCamera();
             
             // Handle device orientation if permission granted
             if (permissionGranted) {
@@ -181,7 +218,7 @@
             }
             
             // Update and display shockwaves
-            drawShockwaves();
+            // drawShockwaves();
             
             // Update and display particles
             for (let i = particles.length - 1; i >= 0; i--) {
@@ -191,12 +228,7 @@
                     particles.splice(i, 1);
                 }
             }
-            
-            // Draw the main circle with color based on speed
-            let brightness = constrain(map(Cspeed, 0, 50, 150, 255), 150, 255);
-            let redValue = constrain(map(Cspeed, 0, 50, 200, 255), 200, 255);
-            let yellowValue = constrain(map(Cspeed, 0, 50, 100, 230), 100, 230);
-            
+                        
 						// Draw the border
 						push();
 						noFill();
@@ -207,11 +239,21 @@
 
 						// Draw the asteroid
 						push();
-            fill(255);
-            stroke(0);
-						strokeWeight(10);
-            //ellipse(cx, cy, 30);
-						// translate(cx, cy, 0);
+ 
+						// Get camera's orientation
+						let camX = cam.eyeX - cam.centerX;
+						let camY = cam.eyeY - cam.centerY;
+						let camZ = cam.eyeZ - cam.centerZ;
+
+						// This calculates the rotation needed to face the camera
+						let rotationAxis = createVector(camY, -camX, 0).normalize();
+						let rotationAngle = atan2(sqrt(camX*camX + camY*camY), camZ);
+						if (!isNaN(rotationAngle) && rotationAxis.mag() > 0) {
+							rotate(rotationAngle, [rotationAxis.x, rotationAxis.y, rotationAxis.z]);
+						}
+
+						translate(cx, cy, 0);
+
 						normalMaterial();
 						scale(asteroidSize, asteroidSize, asteroidSize);
 						model(asteroid);
@@ -298,6 +340,77 @@
                 }
             }
         }
+
+				// Add these functions for handling swipe gestures
+				function touchStarted() {
+						touchStartX = touches[0].x;
+						touchStartY = touches[0].y;
+						return false; // Prevent default
+				}
+
+				function touchEnded() {
+						if (touches.length > 0) {
+								let touchEndX = touches[0].x;
+								let deltaX = touchEndX - touchStartX;
+								
+								// If significant horizontal swipe detected
+								if (abs(deltaX) > 50) {
+										if (deltaX > 0) {
+												// Swipe right - move counter-clockwise
+												targetCamIndex = (currentCamIndex + 3) % 4;
+										} else {
+												// Swipe left - move clockwise
+												targetCamIndex = (currentCamIndex + 1) % 4;
+										}
+										startCameraTransition();
+								}
+						}
+						return false; // Prevent default
+				}
+
+				function mousePressed() {
+						touchStartX = mouseX;
+						touchStartY = mouseY;
+						return false; // Prevent default
+				}
+
+				function mouseReleased() {
+						let deltaX = mouseX - touchStartX;
+						
+						// If significant horizontal swipe detected
+						if (abs(deltaX) > 50) {
+								if (deltaX > 0) {
+										// Swipe right - move counter-clockwise
+										targetCamIndex = (currentCamIndex + 3) % 4;
+								} else {
+										// Swipe left - move clockwise
+										targetCamIndex = (currentCamIndex + 1) % 4;
+								}
+								startCameraTransition();
+						}
+						return false; // Prevent default
+				}
+
+				function startCameraTransition() {
+						isTransitioning = true;
+						transitionStartTime = millis();
+				}
+
+				function updateCamera() {
+						if (isTransitioning) {
+								let elapsed = millis() - transitionStartTime;
+								let progress = constrain(elapsed / transitionDuration, 0, 1);
+																
+								// Use slerp to smoothly interpolate between cameras
+								cam.slerp(cubeCams[currentCamIndex], cubeCams[targetCamIndex], progress);
+								
+								// If transition is complete
+								if (progress >= 1) {
+										isTransitioning = false;
+										currentCamIndex = targetCamIndex;
+								}
+						}
+				}
 
 				class Particle {
             constructor(x, y, velocityX, velocityY, Pspeed) {
