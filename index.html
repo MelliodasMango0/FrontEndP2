@@ -11,7 +11,7 @@
         let button;
         let permissionGranted = false;
 				let asteroid;
-				let asteroidSize = 10; // asteriod scale multiplier
+				let asteroidSize = 5; // asteriod scale multiplier
         let cx, cy; // Position of the circle
         let velocityX = 0, velocityY = 0; // Simulated velocity
         let lastCx = 0, lastCy = 0;
@@ -35,7 +35,8 @@
 
 				// For border
 				let borderSize;
-				let xYZMax, xYZMin;
+				let xMax, xMin;
+				let yMax, yMin;
 
 				// Camera variables
 				let cam; // camera for orbit control
@@ -70,11 +71,14 @@
             background(0);
             stroke(32, 8, 64);
 
-						borderSize = windowWidth*2;
-						xYZMax = borderSize/2;
-						xYZMin = -borderSize/2;
+						borderSize = width * 0.8; // Border size
+						xMax = width/2;
+						xMin = -width/2;
+						yMax = height/2;
+						yMin = -height/2;
 
-						camDistance = borderSize * 0.875; // Distance from the center
+						// Set up the camera
+						camDistance = borderSize*2; // Distance from the center
 						cam = createCamera();
 						cam.setPosition(0, 0, camDistance);
 						cam.lookAt(0, 0, 0);
@@ -182,8 +186,8 @@
             // }
             
             // Keep the circle within the canvas
-            cx = constrain(cx, xYZMin, xYZMax);
-            cy = constrain(cy, xYZMin, xYZMax);
+            cx = constrain(cx, xMin, xMax);
+            cy = constrain(cy, yMin, yMax);
             
             // Calculate speed for color intensity
             let Cspeed = dist(0, 0, velocityX, velocityY);
@@ -233,7 +237,7 @@
 						noFill();
 						stroke('red');
 						strokeWeight(10);
-						box(borderSize);
+						box(width, height, width);
 						pop();
 
 						// Draw the asteroid
